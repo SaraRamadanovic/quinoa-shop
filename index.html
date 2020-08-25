@@ -33,6 +33,11 @@
 
     <!-- Template Main CSS File -->
     <link href="css/style.css" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css"
+    />
 
     <!-- =======================================================
   * Template Name: Restaurantly - v1.1.0
@@ -858,6 +863,23 @@
         </div>
 
       </div>
+      <div style="margin-top: 10%; margin-left: 2%; margin-right: 2%;">
+        <button
+          type="button"
+          class="btn btn-primary btn-lg"
+          onclick="update_cart_status('CONFIRMED')"
+        >
+          CONFIRM
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-lg"
+          onclick="update_cart_status('CANCELED')"
+        >
+          CANCEL
+        </button>
+      </div>
+        <table id="cart_table"></table>
     </section>
 
   </main>
@@ -876,9 +898,15 @@
     <script src="vendor/aos/aos.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.17.0/jquery.validate.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/1.3.1/js/toastr.js"></script>
+    <script
+      type="text/javascript"
+      src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"
+    ></script>
 
     <!-- Template Main JS File -->
     <script src="js/main.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/restClient.js"></script>
 
     <script>
      function parseJwt (token) {
@@ -936,18 +964,99 @@
            success: function(data) { console.log(data);
             var list = '';
              for(i=0; i<data.length; i++){
-               list+= '<li>'+data[i].name+'  ' + data[i].add_to_cart+'</li>';
+        //       list+= '<li>'+data[i].name+'  ' + data[i].add_to_cart+'</li>';
+
+                list+= '<div class="col-lg-6 menu-item filter-specialty">'+
+
+                            '<div class="menu-content">'+
+                            '<a href="#">'+data[i].name+'</a><span>'+data[i].price+'</span>'+
+                            '</div>'+
+                            '<div class="menu-ingredients">'+
+                              'Plump lobster meat, mayo and crisp lettuce on a toasted bulky roll'+
+                            '</div class="menu-ingredients">'+
+                            '<div>'+data[i].add_to_cart+'</div>'
+                          '</div>';
              }
               $("#products").html(list);
            }
          });
     }
 
-    get_product('VOCE');
-
     function add_to_cart(id){
-
+      user_id = Utils.parseJwt(localStorage.getItem("user_token")).data.id;
+      RestClient.post(
+        "product_to_cart",
+        { dish_id: id, user_id: user_id },
+        function (data) {
+          toastr.success(data);
+          get_product('VOCE');
+        },
+        function (data) {
+          console.log(data);
+          toastr.error("Product was not added to cart");
+        }
+      );
     }
+
+    function get_customer_cart () {
+    //  user_id = Utils.parseJwt(localStorage.getItem("user_token")).data.id;
+      RestClient.get(
+        "cart",
+        function (data) {
+          Utils.datatable(
+            "cart_table",
+            [
+              { data: "dish_name", title: "Name", defaultContent: "" },
+              { data: "price", title: "Price", defaultContent: "" },
+              { data: "amount", title: "Quantity", defaultContent: "" },
+              { data: "plus", title: "Add", defaultContent: "" },
+              { data: "minus", title: "Remove", defaultContent: "" },
+              { data: "status", title: "Status", defaultContent: "" },
+            ],
+            data.cart
+          );
+          $("#total_amount").html(data.total);
+        },
+        function (data) {
+          toastr.error(data.responseText);
+        }
+      );
+    }
+
+    function update_amount(id, type) {
+      RestClient.patch(
+        "cart/" + id + "/amount?type=" + type,
+        null,
+        function (data) {
+          toastr.success("Cart was updated successfully");
+          Cart.get_customer_cart();
+        },
+        function (data) {
+          toastr.error("Cart was not updated");
+        }
+      );
+    }
+
+    function update_cart_status (status) { alert('hell0')
+      //user_id = Utils.parseJwt(localStorage.getItem("user_token")).data.id;
+      RestClient.patch(
+        "cart/status?status=" + status,
+        null,
+        function (data) {
+          toastr.success(data);
+          Cart.get_customer_cart();
+        },
+        function (data) {
+          console.log(data);
+          toastr.error("Cart was not updated");
+        }
+      );
+    }
+
+
+    get_product('VOCE');
+    get_customer_cart();
+
 
     </script>
   </body>
